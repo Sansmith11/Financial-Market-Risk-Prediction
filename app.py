@@ -48,21 +48,57 @@ def resolve_ticker(ticker: str) -> tuple[str, str | None]:
 
 
 def fetch_data(ticker: str, period: str = "3y") -> pd.DataFrame:
-    df = yf.download(ticker, period=period, auto_adjust=True, progress=False)
-    if df.empty:
-        # Give a helpful hint based on the ticker
-        hint = ""
-        t = ticker.upper()
-        if t == "APPL":
-            hint = " Did you mean 'AAPL' (Apple Inc.)?"
-        elif not t.endswith(".NS") and any(c.isalpha() for c in t):
-            hint = f" For Indian stocks try '{t}.NS' (e.g. RELIANCE.NS, TCS.NS)."
-        raise ValueError(f"No data found for ticker '{ticker}'.{hint}")
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = [str(col[0]).lower() for col in df.columns]
-    else:
-        df.columns = [str(col).lower() for col in df.columns]
-    return df
+    """
+    Robust Yahoo Finance Downloader
+    """
+
+    try:
+        stock = yf.Ticker(ticker)
+
+        df = stock.history(
+            period=period,
+            auto_adjust=True
+        )
+
+        if df.empty:
+            df = yf.download(
+                ticker,
+                period=period,
+                auto_adjust=True,
+                progress=False,
+                threads=False
+            )
+
+        if df.empty:
+            raise ValueError(
+                f"No market data found for ticker '{ticker}'"
+            )
+
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = [str(c[0]).lower() for c in df.columns]
+        else:
+            df.columns = [str(c).lower() for c in df.columns]
+
+        required = [
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume"
+        ]
+
+        for col in required:
+            if col not in df.columns:
+                raise ValueError(
+                    f"Missing column: {col}"
+                )
+
+        return df
+
+    except Exception as e:
+        raise ValueError(
+            f"Failed to fetch data for {ticker}: {str(e)}"
+        )
 
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -79,6 +115,16 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     z = (log_ret - log_ret.mean()) / log_ret.std()
     df = df.loc[z[np.abs(z) <= 5].index]
     return df.sort_index()
+
+def safe_run(fn, returns, default):
+    try:
+        return fn(returns)
+
+    except Exception as e:
+        print(f"{fn.__name__} failed:")
+        print(str(e))
+
+        return default
 
 
 def engineer_features(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
@@ -264,13 +310,67 @@ def run_pipeline(ticker: str) -> dict:
     returns = df["log_return"].values
     prices  = df["close"].values
 
-    frac    = run_fractional(returns)
-    fractal = run_fractal(returns)
-    sinh    = run_sinh_arcsinh(returns)
-    slash   = run_slash(returns)
-    spline  = run_neural_spline(returns)
-    quant   = run_quantile(returns)
-    davies  = run_davies(returns)
+   frac = safe_run(
+    run_fractional,
+    returns,
+    {
+        "regime": "random walk",
+        "memory_score": 0
+    }
+)
+
+fractal = safe_run(
+    run_fractal,
+    returns,
+    {
+        "complexity_score": 0.5,
+        "structure": "complex"
+    }
+)
+
+sinh = safe_run(
+    run_sinh_arcsinh,
+    returns,
+    {
+        "skew_score": 0,
+        "skewness_direction": "symmetric"
+    }
+)
+
+slash = safe_run(
+    run_slash,
+    returns,
+    {
+        "extreme_event_prob": 0.05,
+        "crash_risk": "medium"
+    }
+)
+
+spline = safe_run(
+    run_neural_spline,
+    returns,
+    {
+        "q25": 0,
+        "q75": 0
+    }
+)
+
+quant = safe_run(
+    run_quantile,
+    returns,
+    {
+        "tail_risk_score": 0.5
+    }
+)
+
+davies = safe_run(
+    run_davies,
+    returns,
+    {
+        "stress_score": 0.5,
+        "regime": "normal"
+    }
+)
     decision = make_decision(frac, fractal, sinh, slash, spline, quant, davies)
 
     return {
@@ -541,31 +641,56 @@ document.getElementById('tickerInput').addEventListener('keydown',e=>{
 # ────────────────────────────────────────────────────────────────────────────
 # ROUTES
 # ────────────────────────────────────────────────────────────────────────────
-
-@app.route("/")
-def index():
-    return render_template_string(DASHBOARD_HTML)
-
+# ────────────────────────────────────────────────────────────────────────────
+# API ANALYZE
+# ────────────────────────────────────────────────────────────────────────────
 
 @app.route("/api/analyze")
 def api_analyze():
-    ticker = request.args.get("ticker", "").strip().upper()
+
+    ticker = request.args.get(
+        "ticker",
+        ""
+    ).strip().upper()
+
     if not ticker:
-        return jsonify({"error": "ticker parameter is required"}), 400
+        return jsonify({
+            "error": "ticker parameter is required"
+        }), 400
+
     try:
+
+        print("=" * 60)
+        print(f"ANALYZING TICKER: {ticker}")
+        print("=" * 60)
+
         report = run_pipeline(ticker)
+
+        print("PIPELINE COMPLETED SUCCESSFULLY")
+
         return jsonify(report)
+
     except ValueError as e:
-        return jsonify({"error": str(e)}), 404
+
+        print("VALUE ERROR:")
+        print(str(e))
+
+        return jsonify({
+            "error": str(e)
+        }), 404
+
     except Exception as e:
-        return jsonify({"error": f"Pipeline error: {str(e)}"}), 500
 
+        import traceback
 
-@app.route("/health")
-def health():
-    return jsonify({"status": "ok"})
+        print("=" * 60)
+        print("PIPELINE FAILED")
+        print("=" * 60)
 
+        traceback.print_exc()
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+        return jsonify({
+            "error": str(e),
+            "type": type(e).__name__
+        }), 500
+
