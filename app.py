@@ -313,7 +313,7 @@ Python cannot execute this.
 
 ## Replace the ENTIRE `run_pipeline()` with this:
 
-```python
+```
 def run_pipeline(ticker: str) -> dict:
 
     ticker, suggestion = resolve_ticker(ticker)
