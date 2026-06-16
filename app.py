@@ -307,8 +307,6 @@ def make_decision(frac, fractal, sinh, slash, spline, quant, davies):
     }
 
 
-Python cannot execute this.
-
 ---
 
 ## Replace the ENTIRE `run_pipeline()` with this:
