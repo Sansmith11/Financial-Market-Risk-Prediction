@@ -306,6 +306,7 @@ def make_decision(frac, fractal, sinh, slash, spline, quant, davies):
         "confidence": round(conf, 4),
     }
 
+Python cannot execute this.
 
 ---
 
