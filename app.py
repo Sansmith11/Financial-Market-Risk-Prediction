@@ -12,7 +12,6 @@ from flask import Flask, request, jsonify, render_template_string
 
 warnings.filterwarnings("ignore")
 
-# ── advanced_distributions imports ──────────────────────────────────────────
 from advanced_distributions.fractional_distribution    import FractionalDistribution
 from advanced_distributions.fractal_distribution       import FractalDistribution
 from advanced_distributions.sinh_arcsinh               import SinhArcsinhDistribution
@@ -23,14 +22,42 @@ from advanced_distributions.davies_distribution        import DaviesDistribution
 
 app = Flask(__name__)
 
+# ── Common ticker corrections ────────────────────────────────────────────────
+TICKER_CORRECTIONS = {
+    "APPL": "AAPL", "GOOGL": "GOOGL", "GOOG": "GOOGL",
+    "AMZON": "AMZN", "AMAZN": "AMZN", "MICROSFT": "MSFT",
+    "MICROSFOT": "MSFT", "NFLX": "NFLX", "NETFLX": "NFLX",
+    "TSLA": "TSLA", "TESTA": "TSLA", "META": "META",
+    "RELINCE": "RELIANCE.NS", "RELIACE": "RELIANCE.NS",
+    "TCS": "TCS.NS", "INFY": "INFY.NS", "WIPRO": "WIPRO.NS",
+    "HDFCBANK": "HDFCBANK.NS", "ICICIBANK": "ICICIBANK.NS",
+    "BAJFINANCE": "BAJFINANCE.NS", "SBIN": "SBIN.NS",
+}
+
 # ────────────────────────────────────────────────────────────────────────────
 # PIPELINE FUNCTIONS
 # ────────────────────────────────────────────────────────────────────────────
 
+def resolve_ticker(ticker: str) -> tuple[str, str | None]:
+    """Returns (resolved_ticker, suggestion_message_or_None)"""
+    upper = ticker.upper().strip()
+    if upper in TICKER_CORRECTIONS:
+        corrected = TICKER_CORRECTIONS[upper]
+        return corrected, f"'{upper}' auto-corrected to '{corrected}'"
+    return upper, None
+
+
 def fetch_data(ticker: str, period: str = "3y") -> pd.DataFrame:
     df = yf.download(ticker, period=period, auto_adjust=True, progress=False)
     if df.empty:
-        raise ValueError(f"No data found for ticker: {ticker}")
+        # Give a helpful hint based on the ticker
+        hint = ""
+        t = ticker.upper()
+        if t == "APPL":
+            hint = " Did you mean 'AAPL' (Apple Inc.)?"
+        elif not t.endswith(".NS") and any(c.isalpha() for c in t):
+            hint = f" For Indian stocks try '{t}.NS' (e.g. RELIANCE.NS, TCS.NS)."
+        raise ValueError(f"No data found for ticker '{ticker}'.{hint}")
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = [str(col[0]).lower() for col in df.columns]
     else:
@@ -230,6 +257,7 @@ def make_decision(frac, fractal, sinh, slash, spline, quant, davies):
 
 
 def run_pipeline(ticker: str) -> dict:
+    ticker, suggestion = resolve_ticker(ticker)
     raw     = fetch_data(ticker)
     df      = clean_data(raw)
     df      = engineer_features(df)
@@ -247,6 +275,7 @@ def run_pipeline(ticker: str) -> dict:
 
     return {
         "ticker":        ticker,
+        "suggestion":    suggestion,
         "n_sessions":    len(df),
         "mean_return":   round(returns.mean(), 6),
         "std_return":    round(returns.std(),  6),
@@ -264,7 +293,7 @@ def run_pipeline(ticker: str) -> dict:
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# HTML DASHBOARD (embedded)
+# HTML DASHBOARD
 # ────────────────────────────────────────────────────────────────────────────
 
 DASHBOARD_HTML = """<!DOCTYPE html>
@@ -284,14 +313,21 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   header h1{font-size:1.3rem;font-weight:600;color:var(--accent)}
   header span{color:var(--muted);font-size:.9rem}
   .container{max-width:1200px;margin:0 auto;padding:1.5rem}
-  .search-bar{display:flex;gap:.75rem;margin-bottom:1.5rem}
+  .search-bar{display:flex;gap:.75rem;margin-bottom:.75rem}
   .search-bar input{flex:1;background:var(--card);border:1px solid var(--border);
                     color:var(--text);padding:.6rem 1rem;border-radius:6px;font-size:1rem}
   .search-bar input:focus{outline:none;border-color:var(--accent)}
   .search-bar button{background:var(--accent);color:#0d1117;font-weight:600;
                      border:none;padding:.6rem 1.4rem;border-radius:6px;cursor:pointer;font-size:1rem}
   .search-bar button:hover{opacity:.85}
+  .examples{font-size:.8rem;color:var(--muted);margin-bottom:1rem}
+  .examples span{color:var(--accent);cursor:pointer;margin-right:.5rem;
+                 padding:.15rem .4rem;border:1px solid var(--border);border-radius:4px}
+  .examples span:hover{border-color:var(--accent)}
   #status{color:var(--muted);font-size:.9rem;margin-bottom:1rem;min-height:1.2rem}
+  #suggestion{color:var(--yellow);font-size:.85rem;margin-bottom:.75rem;
+              background:#3a2e1a;border:1px solid #d29922;border-radius:6px;
+              padding:.5rem .85rem;display:none}
   .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem}
   .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:1rem}
   @media(max-width:700px){.grid-3,.grid-2{grid-template-columns:1fr}}
@@ -299,20 +335,24 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   .card h3{font-size:.75rem;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;letter-spacing:.05em}
   .metric{font-size:1.6rem;font-weight:700}
   .badge{display:inline-block;padding:.2rem .6rem;border-radius:4px;font-size:.8rem;font-weight:600}
-  .BUY,.buy,.trending,.structured,.low,.normal{background:#1a3a1f;color:var(--green)}
-  .SELL,.sell,.mean-reverting,.chaotic,.high,.crisis{background:#3a1a1a;color:var(--red)}
-  .HOLD,.hold,.random,.complex,.medium,.stress,.caution{background:#3a2e1a;color:var(--yellow)}
+  .BUY{background:#1a3a1f;color:var(--green)}
+  .SELL{background:#3a1a1a;color:var(--red)}
+  .HOLD{background:#3a2e1a;color:var(--yellow)}
+  .trending,.structured,.low,.normal,.right-skewed{background:#1a2a3a;color:var(--accent)}
+  .mean-reverting,.chaotic,.high,.crisis,.left-skewed{background:#3a1a1a;color:var(--red)}
+  .random,.complex,.medium,.stress,.caution,.symmetric{background:#3a2e1a;color:var(--yellow)}
   .section-title{font-size:1rem;font-weight:600;color:var(--accent);
                  margin:1rem 0 .5rem;padding-bottom:.4rem;border-bottom:1px solid var(--border)}
   .kv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.4rem}
   .kv{display:flex;justify-content:space-between;font-size:.82rem;
       background:#0d1117;padding:.3rem .6rem;border-radius:4px}
-  .kv .k{color:var(--muted)}
-  .kv .v{font-weight:600;color:var(--text)}
+  .kv .k{color:var(--muted)}.kv .v{font-weight:600;color:var(--text)}
   .chart-box{background:var(--card);border:1px solid var(--border);border-radius:8px;
              padding:1rem;margin-bottom:1rem}
   .hidden{display:none}
-  #errorMsg{color:var(--red);font-size:.9rem;margin-bottom:.5rem}
+  #errorMsg{color:var(--red);background:#3a1a1a;border:1px solid var(--red);
+            border-radius:6px;padding:.6rem 1rem;font-size:.9rem;margin-bottom:.75rem;display:none}
+  #errorMsg .tip{color:var(--yellow);margin-top:.4rem;font-size:.82rem}
 </style>
 </head>
 <body>
@@ -322,157 +362,127 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 </header>
 <div class="container">
   <div class="search-bar">
-    <input id="tickerInput" placeholder="Enter ticker e.g. RELIANCE.NS, TCS.NS, AAPL" value="RELIANCE.NS"/>
+    <input id="tickerInput" placeholder="Enter ticker e.g. RELIANCE.NS, TCS.NS, AAPL, MSFT" value="RELIANCE.NS"/>
     <button onclick="analyze()">Analyze</button>
   </div>
-  <div id="errorMsg" class="hidden"></div>
+  <div class="examples">
+    Try: 
+    <span onclick="setTicker('RELIANCE.NS')">RELIANCE.NS</span>
+    <span onclick="setTicker('TCS.NS')">TCS.NS</span>
+    <span onclick="setTicker('INFY.NS')">INFY.NS</span>
+    <span onclick="setTicker('AAPL')">AAPL</span>
+    <span onclick="setTicker('MSFT')">MSFT</span>
+    <span onclick="setTicker('TSLA')">TSLA</span>
+  </div>
+  <div id="errorMsg"><span id="errText"></span><div class="tip" id="errTip"></div></div>
+  <div id="suggestion"></div>
   <div id="status"></div>
+
   <div id="results" class="hidden">
-    <!-- Decision Banner -->
     <div class="grid-3">
-      <div class="card">
-        <h3>Signal</h3>
-        <div class="metric" id="dec_signal">—</div>
-      </div>
-      <div class="card">
-        <h3>Confidence</h3>
-        <div class="metric" id="dec_conf">—</div>
-      </div>
-      <div class="card">
-        <h3>Net Score</h3>
-        <div class="metric" id="dec_net">—</div>
-      </div>
+      <div class="card"><h3>Signal</h3><div class="metric" id="dec_signal">—</div></div>
+      <div class="card"><h3>Confidence</h3><div class="metric" id="dec_conf">—</div></div>
+      <div class="card"><h3>Net Score</h3><div class="metric" id="dec_net">—</div></div>
     </div>
     <div class="grid-3">
-      <div class="card">
-        <h3>Bull Score</h3>
-        <div class="metric" id="dec_bull" style="color:var(--green)">—</div>
-      </div>
-      <div class="card">
-        <h3>Bear Score</h3>
-        <div class="metric" id="dec_bear" style="color:var(--red)">—</div>
-      </div>
-      <div class="card">
-        <h3>Sessions</h3>
-        <div class="metric" id="n_sessions">—</div>
-      </div>
+      <div class="card"><h3>Bull Score</h3><div class="metric" id="dec_bull" style="color:var(--green)">—</div></div>
+      <div class="card"><h3>Bear Score</h3><div class="metric" id="dec_bear" style="color:var(--red)">—</div></div>
+      <div class="card"><h3>Sessions</h3><div class="metric" id="n_sessions">—</div></div>
     </div>
 
-    <!-- Charts -->
     <div class="chart-box"><div id="priceChart" style="height:260px"></div></div>
     <div class="grid-2">
       <div class="chart-box"><div id="returnsDist" style="height:220px"></div></div>
       <div class="chart-box"><div id="riskGauge"  style="height:220px"></div></div>
     </div>
 
-    <!-- Model Details -->
     <div class="section-title">Model Results</div>
-
     <div class="grid-2">
-      <div class="card">
-        <h3>Fractional Distribution — Market Regime</h3>
-        <div class="kv-grid" id="kv_frac"></div>
-      </div>
-      <div class="card">
-        <h3>Fractal Distribution — Complexity</h3>
-        <div class="kv-grid" id="kv_fractal"></div>
-      </div>
+      <div class="card"><h3>Fractional Distribution — Market Regime</h3><div class="kv-grid" id="kv_frac"></div></div>
+      <div class="card"><h3>Fractal Distribution — Complexity</h3><div class="kv-grid" id="kv_fractal"></div></div>
     </div>
     <div class="grid-2">
-      <div class="card">
-        <h3>Sinh-Arcsinh Distribution — Skewness</h3>
-        <div class="kv-grid" id="kv_sinh"></div>
-      </div>
-      <div class="card">
-        <h3>Slash Distribution — Crash Risk</h3>
-        <div class="kv-grid" id="kv_slash"></div>
-      </div>
+      <div class="card"><h3>Sinh-Arcsinh Distribution — Skewness</h3><div class="kv-grid" id="kv_sinh"></div></div>
+      <div class="card"><h3>Slash Distribution — Crash Risk</h3><div class="kv-grid" id="kv_slash"></div></div>
     </div>
     <div class="grid-2">
-      <div class="card">
-        <h3>Neural Spline — Quantile Forecast</h3>
-        <div class="kv-grid" id="kv_spline"></div>
-      </div>
-      <div class="card">
-        <h3>Quantile Distribution — VaR / CVaR</h3>
-        <div class="kv-grid" id="kv_quant"></div>
-      </div>
+      <div class="card"><h3>Neural Spline — Quantile Forecast</h3><div class="kv-grid" id="kv_spline"></div></div>
+      <div class="card"><h3>Quantile Distribution — VaR / CVaR</h3><div class="kv-grid" id="kv_quant"></div></div>
     </div>
     <div class="card" style="margin-bottom:1rem">
       <h3>Davies Distribution — Stress Regime</h3>
       <div class="kv-grid" id="kv_davies"></div>
     </div>
-  </div><!-- /results -->
+  </div>
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
-const DARK = {paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',
-              font:{color:'#e6edf3',size:11},
-              xaxis:{gridcolor:'#30363d',zerolinecolor:'#30363d'},
-              yaxis:{gridcolor:'#30363d',zerolinecolor:'#30363d'},
-              margin:{t:30,r:10,b:40,l:50}};
+const DARK={paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',
+            font:{color:'#e6edf3',size:11},
+            xaxis:{gridcolor:'#30363d',zerolinecolor:'#30363d'},
+            yaxis:{gridcolor:'#30363d',zerolinecolor:'#30363d'},
+            margin:{t:30,r:10,b:40,l:50}};
 
-function badgeClass(val){
-  if(typeof val==='string'){
-    const v=val.toLowerCase();
-    if(['buy','trending','structured','low','normal'].includes(v))return v;
-    if(['sell','mean-reverting','chaotic','high','crisis'].includes(v))return v;
-    return 'hold';
-  }
-  return '';
-}
+function setTicker(t){$('tickerInput').value=t;analyze();}
 
 function kvHtml(obj){
   const badgeKeys=['regime','structure','crash_risk','skewness_direction'];
   return Object.entries(obj).map(([k,v])=>{
     let disp=v;
-    if(badgeKeys.includes(k))disp=`<span class="badge ${v}">${v}</span>`;
+    if(badgeKeys.includes(k)){
+      const cls=(v||'').toLowerCase().replace(/\s+/g,'-');
+      disp=`<span class="badge ${cls}">${v}</span>`;
+    }
     return `<div class="kv"><span class="k">${k}</span><span class="v">${disp}</span></div>`;
   }).join('');
 }
 
-function drawPriceChart(prices, ticker){
-  const n=prices.length;
-  const x=[...Array(n).keys()].map(i=>i-n+1);
-  Plotly.newPlot('priceChart',[{x,y:prices,type:'scatter',mode:'lines',
-    line:{color:'#58a6ff',width:1.5},name:'Close'}],
-    {...DARK,title:{text:`${ticker} — Last 120 Sessions`,font:{color:'#e6edf3',size:13}}});
+function showError(msg, tip=''){
+  $('errorMsg').style.display='block';
+  $('errText').textContent=msg;
+  $('errTip').textContent=tip;
+  $('errTip').style.display=tip?'block':'none';
+  $('results').classList.add('hidden');
+  $('suggestion').style.display='none';
 }
 
-function drawReturnsDist(returns){
-  Plotly.newPlot('returnsDist',[{x:returns,type:'histogram',nbinsx:60,
-    marker:{color:'#58a6ff',opacity:.75},name:'Log Returns'}],
-    {...DARK,title:{text:'Return Distribution (last 300)',font:{color:'#e6edf3',size:12}}});
-}
-
-function drawGauge(stress, label){
-  Plotly.newPlot('riskGauge',[{type:'indicator',mode:'gauge+number',
-    value:Math.round(stress*100),
-    gauge:{axis:{range:[0,100]},
-           bar:{color: stress>0.65?'#f85149': stress>0.4?'#d29922':'#3fb950'},
-           steps:[{range:[0,40],color:'#1a3a1f'},{range:[40,65],color:'#3a2e1a'},
-                  {range:[65,100],color:'#3a1a1a'}]},
-    title:{text:`Stress Score — ${label}`,font:{color:'#e6edf3',size:12}},
-    number:{suffix:'%',font:{color:'#e6edf3'}}}],
-    {...DARK,margin:{t:40,r:20,b:20,l:20}});
-}
+function hideError(){$('errorMsg').style.display='none';}
 
 async function analyze(){
   const ticker=$('tickerInput').value.trim().toUpperCase();
   if(!ticker)return;
-  $('errorMsg').classList.add('hidden');
+  hideError();
+  $('suggestion').style.display='none';
   $('results').classList.add('hidden');
   $('status').textContent=`⏳ Running pipeline for ${ticker} — this may take ~30s…`;
 
   try{
     const res=await fetch(`/api/analyze?ticker=${encodeURIComponent(ticker)}`);
     const data=await res.json();
-    if(!res.ok){throw new Error(data.error||'Pipeline failed');}
 
-    $('status').textContent=`✅ Done — ${data.n_sessions} sessions analysed`;
+    if(!res.ok){
+      $('status').textContent='';
+      let tip='';
+      const err=data.error||'Pipeline failed';
+      if(err.includes('No data')){
+        if(!ticker.endsWith('.NS') && ticker.length<=6)
+          tip='💡 For Indian stocks, add .NS — e.g. '+ticker+'.NS';
+        else
+          tip='💡 Check the ticker symbol at finance.yahoo.com';
+      }
+      showError('❌ '+err, tip);
+      return;
+    }
 
-    // Decision
+    if(data.suggestion){
+      $('suggestion').textContent='ℹ️ '+data.suggestion;
+      $('suggestion').style.display='block';
+      $('tickerInput').value=data.ticker;
+    }
+
+    $('status').textContent=`✅ Done — ${data.n_sessions} sessions analysed for ${data.ticker}`;
+
     const dec=data.decision;
     const sig=$('dec_signal');
     sig.textContent=dec.decision;
@@ -483,12 +493,28 @@ async function analyze(){
     $('dec_bear').textContent=dec.bear_score;
     $('n_sessions').textContent=data.n_sessions;
 
-    // Charts
-    drawPriceChart(data._prices, ticker);
-    drawReturnsDist(data._returns);
-    drawGauge(data.davies.stress_score, data.davies.regime);
+    Plotly.newPlot('priceChart',[{
+      x:[...Array(data._prices.length).keys()].map(i=>i-data._prices.length+1),
+      y:data._prices,type:'scatter',mode:'lines',
+      line:{color:'#58a6ff',width:1.5},name:'Close'
+    }],{...DARK,title:{text:`${data.ticker} — Last 120 Sessions`,font:{color:'#e6edf3',size:13}}});
 
-    // KV panels
+    Plotly.newPlot('returnsDist',[{
+      x:data._returns,type:'histogram',nbinsx:60,
+      marker:{color:'#58a6ff',opacity:.75},name:'Log Returns'
+    }],{...DARK,title:{text:'Return Distribution (last 300)',font:{color:'#e6edf3',size:12}}});
+
+    const stress=data.davies.stress_score;
+    Plotly.newPlot('riskGauge',[{
+      type:'indicator',mode:'gauge+number',value:Math.round(stress*100),
+      gauge:{axis:{range:[0,100]},
+             bar:{color:stress>0.65?'#f85149':stress>0.4?'#d29922':'#3fb950'},
+             steps:[{range:[0,40],color:'#1a3a1f'},{range:[40,65],color:'#3a2e1a'},
+                    {range:[65,100],color:'#3a1a1a'}]},
+      title:{text:`Stress Score — ${data.davies.regime}`,font:{color:'#e6edf3',size:12}},
+      number:{suffix:'%',font:{color:'#e6edf3'}}
+    }],{...DARK,margin:{t:40,r:20,b:20,l:20}});
+
     $('kv_frac').innerHTML    = kvHtml(data.fractional);
     $('kv_fractal').innerHTML = kvHtml(data.fractal);
     $('kv_sinh').innerHTML    = kvHtml(data.sinh_arcsinh);
@@ -498,14 +524,12 @@ async function analyze(){
     $('kv_davies').innerHTML  = kvHtml(data.davies);
 
     $('results').classList.remove('hidden');
-  } catch(e){
+  }catch(e){
     $('status').textContent='';
-    $('errorMsg').textContent='❌ '+e.message;
-    $('errorMsg').classList.remove('hidden');
+    showError('❌ Network error — '+e.message);
   }
 }
 
-// Allow Enter key
 document.getElementById('tickerInput').addEventListener('keydown',e=>{
   if(e.key==='Enter') analyze();
 });
@@ -541,8 +565,6 @@ def api_analyze():
 def health():
     return jsonify({"status": "ok"})
 
-
-# ────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
