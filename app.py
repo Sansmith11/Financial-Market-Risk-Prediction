@@ -306,155 +306,142 @@ def make_decision(frac, fractal, sinh, slash, spline, quant, davies):
         "confidence": round(conf, 4),
     }
 
+
+Python cannot execute this.
+
+---
+
+## Replace the ENTIRE `run_pipeline()` with this:
+
+```python
 def run_pipeline(ticker: str) -> dict:
 
-```
-ticker, suggestion = resolve_ticker(ticker)
+    ticker, suggestion = resolve_ticker(ticker)
 
-raw = fetch_data(ticker)
+    raw = fetch_data(ticker)
 
-df = clean_data(raw)
+    df = clean_data(raw)
 
-df = engineer_features(df)
+    df = engineer_features(df)
 
-if len(df) < 50:
-    raise ValueError(
-        f"Insufficient market history for {ticker}"
+    if len(df) < 50:
+        raise ValueError(
+            f"Insufficient market history for {ticker}"
+        )
+
+    returns = df["log_return"].values
+    prices = df["close"].values
+
+    frac = safe_run(
+        run_fractional,
+        returns,
+        {
+            "alpha": 0,
+            "beta": 0,
+            "gamma": 0,
+            "memory_score": 0,
+            "regime": "random walk"
+        }
     )
 
-returns = df["log_return"].values
-prices = df["close"].values
+    fractal = safe_run(
+        run_fractal,
+        returns,
+        {
+            "D": 1.5,
+            "lambda": 1,
+            "complexity_score": 0.5,
+            "structure": "complex"
+        }
+    )
 
-frac = safe_run(
-    run_fractional,
-    returns,
-    {
-        "alpha": 0,
-        "beta": 0,
-        "gamma": 0,
-        "memory_score": 0,
-        "regime": "random walk"
-    }
-)
+    sinh = safe_run(
+        run_sinh_arcsinh,
+        returns,
+        {
+            "epsilon": 0,
+            "delta": 1,
+            "skew_score": 0,
+            "skewness_direction": "symmetric"
+        }
+    )
 
-fractal = safe_run(
-    run_fractal,
-    returns,
-    {
-        "D": 1.5,
-        "lambda": 1,
-        "complexity_score": 0.5,
-        "structure": "complex"
-    }
-)
+    slash = safe_run(
+        run_slash,
+        returns,
+        {
+            "extreme_event_prob": 0.05,
+            "crash_risk": "medium"
+        }
+    )
 
-sinh = safe_run(
-    run_sinh_arcsinh,
-    returns,
-    {
-        "epsilon": 0,
-        "delta": 1,
-        "skew_score": 0,
-        "skewness_direction": "symmetric"
-    }
-)
+    spline = safe_run(
+        run_neural_spline,
+        returns,
+        {
+            "q05": 0,
+            "q25": 0,
+            "q50": 0,
+            "q75": 0,
+            "q95": 0
+        }
+    )
 
-slash = safe_run(
-    run_slash,
-    returns,
-    {
-        "extreme_event_prob": 0.05,
-        "crash_risk": "medium"
-    }
-)
+    quant = safe_run(
+        run_quantile,
+        returns,
+        {
+            "tail_risk_score": 0.5,
+            "VaR_95": 0,
+            "CVaR_95": 0
+        }
+    )
 
-spline = safe_run(
-    run_neural_spline,
-    returns,
-    {
-        "q05": 0,
-        "q25": 0,
-        "q50": 0,
-        "q75": 0,
-        "q95": 0
-    }
-)
+    davies = safe_run(
+        run_davies,
+        returns,
+        {
+            "stress_score": 0.5,
+            "vol_ratio": 1.0,
+            "regime": "normal"
+        }
+    )
 
-quant = safe_run(
-    run_quantile,
-    returns,
-    {
-        "tail_risk_score": 0.5,
-        "VaR_95": 0,
-        "CVaR_95": 0
-    }
-)
-
-davies = safe_run(
-    run_davies,
-    returns,
-    {
-        "stress_score": 0.5,
-        "vol_ratio": 1.0,
-        "regime": "normal"
-    }
-)
-
-decision = make_decision(
-    frac,
-    fractal,
-    sinh,
-    slash,
-    spline,
-    quant,
-    davies
-)
-
-return {
-    "ticker": ticker,
-    "suggestion": suggestion,
-    "n_sessions": len(df),
-
-    "mean_return": round(
-        float(np.mean(returns)), 6
-    ),
-
-    "std_return": round(
-        float(np.std(returns)), 6
-    ),
-
-    "fractional": frac,
-    "fractal": fractal,
-    "sinh_arcsinh": sinh,
-    "slash": slash,
-    "neural_spline": spline,
-    "quantile": quant,
-    "davies": davies,
-    "decision": decision,
-
-    "_prices": prices[-120:].tolist(),
-    "_returns": returns[-300:].tolist()
-}
-```
+    decision = make_decision(
+        frac,
+        fractal,
+        sinh,
+        slash,
+        spline,
+        quant,
+        davies
+    )
 
     return {
-        "ticker":        ticker,
-        "suggestion":    suggestion,
-        "n_sessions":    len(df),
-        "mean_return":   round(returns.mean(), 6),
-        "std_return":    round(returns.std(),  6),
-        "fractional":    frac,
-        "fractal":       fractal,
-        "sinh_arcsinh":  sinh,
-        "slash":         slash,
-        "neural_spline": spline,
-        "quantile":      quant,
-        "davies":        davies,
-        "decision":      decision,
-        "_prices":       prices[-120:].tolist(),
-        "_returns":      returns[-300:].tolist(),
-    }
+        "ticker": ticker,
+        "suggestion": suggestion,
+        "n_sessions": len(df),
 
+        "mean_return": round(
+            float(np.mean(returns)), 6
+        ),
+
+        "std_return": round(
+            float(np.std(returns)), 6
+        ),
+
+        "fractional": frac,
+        "fractal": fractal,
+        "sinh_arcsinh": sinh,
+        "slash": slash,
+        "neural_spline": spline,
+        "quantile": quant,
+        "davies": davies,
+        "decision": decision,
+
+        "_prices": prices[-120:].tolist(),
+        "_returns": returns[-300:].tolist()
+    }
 
 # ────────────────────────────────────────────────────────────────────────────
 # HTML DASHBOARD
