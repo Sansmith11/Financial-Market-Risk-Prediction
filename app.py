@@ -53,6 +53,9 @@ def fetch_data(ticker: str, period: str = "3y") -> pd.DataFrame:
     """
 
     try:
+
+        print(f"Downloading data for {ticker}")
+
         stock = yf.Ticker(ticker)
 
         df = stock.history(
@@ -61,6 +64,9 @@ def fetch_data(ticker: str, period: str = "3y") -> pd.DataFrame:
         )
 
         if df.empty:
+
+            print("history() returned empty, trying download()")
+
             df = yf.download(
                 ticker,
                 period=period,
@@ -71,34 +77,33 @@ def fetch_data(ticker: str, period: str = "3y") -> pd.DataFrame:
 
         if df.empty:
             raise ValueError(
-                f"No market data found for ticker '{ticker}'"
+                f"No data found for ticker: {ticker}"
             )
 
         if isinstance(df.columns, pd.MultiIndex):
-            df.columns = [str(c[0]).lower() for c in df.columns]
+            df.columns = [
+                str(col[0]).lower()
+                for col in df.columns
+            ]
         else:
-            df.columns = [str(c).lower() for c in df.columns]
+            df.columns = [
+                str(col).lower()
+                for col in df.columns
+            ]
 
-        required = [
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume"
-        ]
-
-        for col in required:
-            if col not in df.columns:
-                raise ValueError(
-                    f"Missing column: {col}"
-                )
+        print(f"Successfully downloaded {len(df)} rows")
 
         return df
 
     except Exception as e:
+
+        print("DOWNLOAD ERROR:")
+        print(str(e))
+
         raise ValueError(
-            f"Failed to fetch data for {ticker}: {str(e)}"
+            f"Failed to fetch data for {ticker}: {e}"
         )
+
 
 
 def clean_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -301,21 +306,34 @@ def make_decision(frac, fractal, sinh, slash, spline, quant, davies):
         "confidence": round(conf, 4),
     }
 
-
 def run_pipeline(ticker: str) -> dict:
-    ticker, suggestion = resolve_ticker(ticker)
-    raw     = fetch_data(ticker)
-    df      = clean_data(raw)
-    df      = engineer_features(df)
-    returns = df["log_return"].values
-    prices  = df["close"].values
 
-   frac = safe_run(
+```
+ticker, suggestion = resolve_ticker(ticker)
+
+raw = fetch_data(ticker)
+
+df = clean_data(raw)
+
+df = engineer_features(df)
+
+if len(df) < 50:
+    raise ValueError(
+        f"Insufficient market history for {ticker}"
+    )
+
+returns = df["log_return"].values
+prices = df["close"].values
+
+frac = safe_run(
     run_fractional,
     returns,
     {
-        "regime": "random walk",
-        "memory_score": 0
+        "alpha": 0,
+        "beta": 0,
+        "gamma": 0,
+        "memory_score": 0,
+        "regime": "random walk"
     }
 )
 
@@ -323,6 +341,8 @@ fractal = safe_run(
     run_fractal,
     returns,
     {
+        "D": 1.5,
+        "lambda": 1,
         "complexity_score": 0.5,
         "structure": "complex"
     }
@@ -332,6 +352,8 @@ sinh = safe_run(
     run_sinh_arcsinh,
     returns,
     {
+        "epsilon": 0,
+        "delta": 1,
         "skew_score": 0,
         "skewness_direction": "symmetric"
     }
@@ -350,8 +372,11 @@ spline = safe_run(
     run_neural_spline,
     returns,
     {
+        "q05": 0,
         "q25": 0,
-        "q75": 0
+        "q50": 0,
+        "q75": 0,
+        "q95": 0
     }
 )
 
@@ -359,7 +384,9 @@ quant = safe_run(
     run_quantile,
     returns,
     {
-        "tail_risk_score": 0.5
+        "tail_risk_score": 0.5,
+        "VaR_95": 0,
+        "CVaR_95": 0
     }
 )
 
@@ -368,10 +395,47 @@ davies = safe_run(
     returns,
     {
         "stress_score": 0.5,
+        "vol_ratio": 1.0,
         "regime": "normal"
     }
 )
-    decision = make_decision(frac, fractal, sinh, slash, spline, quant, davies)
+
+decision = make_decision(
+    frac,
+    fractal,
+    sinh,
+    slash,
+    spline,
+    quant,
+    davies
+)
+
+return {
+    "ticker": ticker,
+    "suggestion": suggestion,
+    "n_sessions": len(df),
+
+    "mean_return": round(
+        float(np.mean(returns)), 6
+    ),
+
+    "std_return": round(
+        float(np.std(returns)), 6
+    ),
+
+    "fractional": frac,
+    "fractal": fractal,
+    "sinh_arcsinh": sinh,
+    "slash": slash,
+    "neural_spline": spline,
+    "quantile": quant,
+    "davies": davies,
+    "decision": decision,
+
+    "_prices": prices[-120:].tolist(),
+    "_returns": returns[-300:].tolist()
+}
+```
 
     return {
         "ticker":        ticker,
