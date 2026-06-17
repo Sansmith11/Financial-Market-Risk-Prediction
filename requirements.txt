@@ -2,8 +2,8 @@ flask==3.0.3
 gunicorn==22.0.0
 advanced-distributions==0.2.1
 yfinance==0.2.61
+curl_cffi==0.7.4
 numpy==1.26.4
 pandas==2.2.2
 scipy==1.13.1
 matplotlib==3.8.4
-requests==2.31.0

@@ -48,51 +48,49 @@ def resolve_ticker(ticker: str) -> tuple[str, str | None]:
 
 
 def fetch_data(ticker: str, period: str = "3y") -> pd.DataFrame:
-    import requests as req_lib
-    session = req_lib.Session()
-    session.headers.update({
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36"
-        ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-    })
-    try:
-        session.get("https://finance.yahoo.com", timeout=5)
-    except Exception:
-        pass
+    """Download OHLCV data via yfinance (uses curl_cffi internally)."""
+    import warnings
+    warnings.filterwarnings("ignore")
 
+    df = pd.DataFrame()
+
+    # Method 1: Ticker.history (preferred in yfinance >= 0.2.58)
     try:
-        tk = yf.Ticker(ticker, session=session)
+        tk = yf.Ticker(ticker)
         df = tk.history(period=period, auto_adjust=True)
     except Exception:
         df = pd.DataFrame()
 
+    # Method 2: yf.download fallback
     if df.empty:
         try:
             df = yf.download(
-                ticker, period=period, auto_adjust=True,
-                progress=False, session=session
+                ticker, period=period,
+                auto_adjust=True, progress=False
             )
         except Exception:
             df = pd.DataFrame()
 
     if df.empty:
-        hint = ""
         t = ticker.upper()
-        if not t.endswith(".NS") and len(t) <= 6 and t.isalpha():
+        hint = ""
+        if not t.endswith(".NS") and t.isalpha() and len(t) <= 6:
             hint = f" For Indian stocks try '{t}.NS' (e.g. RELIANCE.NS, TCS.NS)."
-        raise ValueError(f"No data found for ticker '{ticker}'.{hint} "
-                         f"Please verify the symbol at finance.yahoo.com")
+        raise ValueError(
+            f"No data found for ticker '{ticker}'.{hint} "
+            f"Please verify the symbol at finance.yahoo.com"
+        )
 
-    df.columns = [str(c[0]).lower() if isinstance(c, tuple) else str(c).lower()
-                  for c in df.columns]
+    # Flatten MultiIndex columns if present
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [str(c[0]).lower() for c in df.columns]
+    else:
+        df.columns = [str(c).lower() for c in df.columns]
 
     for col in ["open", "high", "low", "close", "volume"]:
         if col not in df.columns:
-            raise ValueError(f"Missing column '{col}' in data for '{ticker}'")
+            raise ValueError(f"Missing column '{col}' for ticker '{ticker}'")
+
     return df
 
 
