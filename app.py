@@ -317,7 +317,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI',system-ui,sans
 <div class="hdr">
   <div style="display:flex;align-items:center;gap:.6rem">
     <span>📊</span>
-    <div><div class="htitle">Financial Risk Pipeline</div>
+    <div><div class="htitle">Financial Market Risk Prediction</div>
     <div class="hsub">7 statistical distribution models · advanced-distributions v0.2.1</div></div>
   </div>
   <div style="display:flex;align-items:center;gap:.5rem">
