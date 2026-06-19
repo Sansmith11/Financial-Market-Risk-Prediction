@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Banner]("C:\Users\skp73\OneDrive\Pictures\Screenshots\Screenshot 2026-06-19 190931.png")
+![Banner]("C:\Users\skp73\OneDrive\Pictures\Screenshots\Screenshot)
 
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-2.x-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com)
