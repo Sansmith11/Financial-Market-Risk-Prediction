@@ -924,7 +924,7 @@ body {
 <!-- NAVBAR -->
 <div class="navbar">
   <div class="navbar-content">
-    <div class="logo">📊 Risk Predictor</div>
+    <div class="logo">Financial Market Risk Prediction</div>
     <div class="search-box">
       <svg width="16" height="16" fill="none" stroke="var(--text-secondary)" stroke-width="2" viewBox="0 0 24 24">
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
