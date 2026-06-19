@@ -418,3 +418,4 @@ If you find this project useful:
 Made with ❤️ by Sandeep Kumar
 
 </div>
+git reset --soft HEAD~1
