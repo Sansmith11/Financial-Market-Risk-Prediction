@@ -2,7 +2,6 @@
 
 <div align="center">
 
-![Banner](<img width="1918" height="555" alt="Screenshot 2026-06-19 190931" src="https://github.com/user-attachments/assets/da914a70-6841-40f7-abdc-f1d84466ce05" />)
 
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-2.x-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com)
