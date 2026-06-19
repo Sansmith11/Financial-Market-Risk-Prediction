@@ -1249,7 +1249,6 @@ function renderModels(data, dec) {
     {key: 'slash', data: data.slash},
     {key: 'spline', data: data.neural_spline},
     {key: 'quant', data: data.quantile},
-    {key: 'davies', data: data.davies},
   ];
   
   const html = models.map(({key, data: mdata}) => {
