@@ -1,7 +1,7 @@
 """
 Financial Market Risk Pipeline — Flask Web App
-Render deployment (Python 3.11) — v13 GROWW-STYLE UI
-Improvements: Groww-inspired modern interface, card-based layout, better UX
+Render deployment (Python 3.11) — v14 GROWW-STYLE UI + Current Price
+Improvements: Groww-inspired modern interface, current price display, better UX
 """
 import os, math, json, warnings
 import numpy as np
@@ -77,6 +77,26 @@ def fetch(ticker, period="3y"):
     for col in ["open","high","low","close","volume"]:
         if col not in df.columns: raise ValueError(f"Missing column '{col}'")
     return df
+
+def get_current_price(ticker):
+    """Fetch current stock price and basic info"""
+    try:
+        ticker_obj = yf.Ticker(ticker)
+        data = ticker_obj.history(period="1d")
+        if data is None or data.empty:
+            return None
+        current_price = float(data['Close'].iloc[-1])
+        prev_close = float(data['Close'].iloc[-1]) if len(data) == 1 else float(data['Close'].iloc[-2]) if len(data) > 1 else current_price
+        price_change = current_price - prev_close
+        pct_change = (price_change / prev_close * 100) if prev_close != 0 else 0
+        return {
+            "current": sf(current_price, 4),
+            "change": sf(price_change, 4),
+            "pct_change": sf(pct_change, 2),
+            "direction": "up" if price_change >= 0 else "down"
+        }
+    except Exception:
+        return None
 
 def clean(df):
     df = df.copy().dropna()
@@ -216,7 +236,7 @@ def run_davies(r, w=20):
             "stress_score":sf(sc,4),"vol_ratio":vr,"regime":reg,
             "_bull":bull_signal,"_bear":bear_signal}
 
-# ── Decision engine ─────────────────────────────────────────────────────────
+# ── Decision engine ────────────────────────────────────────────────────────
 def make_decision(frac, fractal, sinh, slash, spline, quant, davies):
     W = {
         "davies":   0.25,
@@ -264,6 +284,7 @@ def pipeline(ticker):
     ticker, suggestion = resolve(ticker)
     df  = features(clean(fetch(ticker)))
     r   = df["lr"].values; px = df["close"].values
+    current_price_data = get_current_price(ticker)
     frac    = run_fractional(r)
     fractal = run_fractal(r)
     sinh    = run_sinh(r)
@@ -277,6 +298,7 @@ def pipeline(ticker):
     return _clean({
         "ticker":ticker,"suggestion":suggestion,"n_sessions":len(df),
         "mean_return":sf(r.mean()),"std_return":sf(r.std()),
+        "current_price":current_price_data,
         "fractional":pub(frac),"fractal":pub(fractal),"sinh_arcsinh":pub(sinh),
         "slash":pub(slash),"neural_spline":pub(spline),"quantile":pub(quant),
         "davies":pub(davies),"decision":dec,
@@ -531,6 +553,34 @@ body {
   font-size: 1.8rem;
   font-weight: 700;
   color: var(--text);
+}
+
+.ticker-price-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.current-price {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.price-change {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.price-change.up {
+  color: var(--success);
+}
+
+.price-change.down {
+  color: var(--danger);
 }
 
 .ticker-stats {
@@ -861,6 +911,11 @@ body {
   .models-grid {
     grid-template-columns: 1fr;
   }
+  
+  .ticker-info {
+    flex-direction: column;
+    width: 100%;
+  }
 }
 </style>
 </head>
@@ -914,6 +969,10 @@ body {
             <span id="sessions-stat">—</span>
             <span id="return-stat">—</span>
           </div>
+        </div>
+        <div class="ticker-price-section">
+          <div class="current-price" id="current-price">—</div>
+          <div class="price-change" id="price-change">—</div>
         </div>
       </div>
       <div id="decision-badge" class="decision-badge">—</div>
@@ -1061,6 +1120,16 @@ function renderResults(data) {
   $('ticker-display').textContent = data.ticker;
   $('sessions-stat').textContent = data.n_sessions + ' trading sessions';
   $('return-stat').textContent = 'Avg return: ' + (data.mean_return * 100).toFixed(3) + '%';
+  
+  // Current Price
+  if (data.current_price) {
+    const cp = data.current_price;
+    $('current-price').textContent = '₹' + cp.current.toFixed(2);
+    const changeClass = cp.direction === 'up' ? 'up' : 'down';
+    const changeSymbol = cp.direction === 'up' ? '▲' : '▼';
+    $('price-change').className = 'price-change ' + changeClass;
+    $('price-change').textContent = changeSymbol + ' ' + Math.abs(cp.change).toFixed(2) + ' (' + cp.pct_change + '%)';
+  }
   
   // Decision
   const badgeClass = 'decision-' + dec.decision;
