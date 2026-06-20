@@ -729,7 +729,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PulseVest Market Dashboard</title>
+  <title>Financial Market Risk Prediction</title>
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
