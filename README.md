@@ -1,4 +1,4 @@
-# 📊 Financial Market Risk Intelligence Platform
+# Financial Market Risk Intelligence Platform
 
 <div align="center">
 
@@ -21,11 +21,11 @@
 
 ---
 
-## 🚀 Overview
+## Overview
 
 **Financial Market Risk Intelligence Platform** is a quantitative finance application that goes beyond traditional technical analysis. It fetches live market data from Yahoo Finance, performs advanced statistical feature engineering, and analyzes market behavior using **seven specialized probability distributions** to produce intelligent investment signals.
 
-### ✅ What Makes This Different
+### What Makes This Different
 
 | Traditional Tools | This Platform |
 |---|---|
@@ -37,13 +37,13 @@
 
 ---
 
-## 🎯 Problem Statement
+## Problem Statement
 
 Financial markets are highly **nonlinear systems**. Traditional indicators such as RSI, MACD, and Moving Averages often fail during:
 
-- 📉 Market Crashes
-- 🦢 Black Swan Events
-- 🌪 High Volatility Regimes
+-  Market Crashes
+-  Black Swan Events
+-  High Volatility Regimes
 
 This platform addresses those challenges using:
 
@@ -55,9 +55,9 @@ This platform addresses those challenges using:
 
 ---
 
-## ✨ Features
+##  Features
 
-### 📈 Live Market Data
+### Live Market Data
 
 Supports live OHLCV data from Yahoo Finance:
 
@@ -67,7 +67,7 @@ Supports live OHLCV data from Yahoo Finance:
 | NASDAQ | `AAPL` `MSFT` `TSLA` `AMZN` |
 | NYSE | Any valid NYSE ticker symbol |
 
-### 🧠 Seven Advanced Distribution Models
+### Seven Advanced Distribution Models
 
 | # | Model | Purpose |
 |---|---|---|
@@ -77,22 +77,22 @@ Supports live OHLCV data from Yahoo Finance:
 | 4 | **Slash Distribution** | Extreme Event & Crash Detection |
 | 5 | **JohnsonSU (Neural Spline)** | Uncertainty Estimation |
 | 6 | **Quantile Distribution** | VaR / CVaR Risk Management |
-| 7 | **Davies Distribution** ⭐ | Market Stress Regime Detection |
+| 7 | **Davies Distribution**  | Market Stress Regime Detection |
 
-### 📊 Interactive Dashboard
+### Interactive Dashboard
 
 - Real-Time Analysis
 - Risk Gauges & Stress Indicators
 - Price Charts & Distribution Histograms
 - Signal Breakdown & Model Explainability
 
-### 🎯 Intelligent Decision Engine
+### Intelligent Decision Engine
 
 Produces **BUY / HOLD / SELL** based on aggregated Bull Score, Bear Score, Stress Score, Tail Risk, Uncertainty, Memory Effects, and Market Structure.
 
 ---
 
-## 📸 Dashboard Preview
+## Dashboard Preview
 
 | Dashboard | Price Chart |
 |---|---|
@@ -104,9 +104,9 @@ Produces **BUY / HOLD / SELL** based on aggregated Bull Score, Bear Score, Stres
 
 ---
 
-## 🏗 System Architecture
+## System Architecture
 
-### 📂 Project Structure
+### Project Structure
 
 ```
 financial_market_risk_platform/
@@ -129,7 +129,7 @@ financial_market_risk_platform/
 
 ---
 
-## ⚙️ Data Pipeline
+## Data Pipeline
 
 ```
 Step 1: Market Data Collection
@@ -153,9 +153,9 @@ Step 5: Decision Fusion
 
 ---
 
-## 🧠 Distribution Models — Deep Dive
+## Distribution Models — Deep Dive
 
-### 1️⃣ Fractional Distribution — Long Memory Detection
+### 1️. Fractional Distribution — Long Memory Detection
 
 Detects persistence and mean reversion in the return series.
 
@@ -169,7 +169,7 @@ Detects persistence and mean reversion in the return series.
 
 ---
 
-### 2️⃣ Fractal Distribution — Market Complexity
+### 2️. Fractal Distribution — Market Complexity
 
 Measures self-similarity and structural complexity across time scales.
 
@@ -179,7 +179,7 @@ Measures self-similarity and structural complexity across time scales.
 
 ---
 
-### 3️⃣ Sinh-Arcsinh Distribution — Asymmetry & Heavy Tails
+### 3️. Sinh-Arcsinh Distribution — Asymmetry & Heavy Tails
 
 Captures distributional shape beyond Gaussian assumptions.
 
@@ -187,7 +187,7 @@ Captures distributional shape beyond Gaussian assumptions.
 
 ---
 
-### 4️⃣ Slash Distribution — Extreme Event Detection
+### 4️. Slash Distribution — Extreme Event Detection
 
 Specifically tuned for detecting crash probabilities in fat-tail scenarios.
 
@@ -195,7 +195,7 @@ Specifically tuned for detecting crash probabilities in fat-tail scenarios.
 
 ---
 
-### 5️⃣ JohnsonSU Neural Spline — Uncertainty Quantification
+### 5️. JohnsonSU Neural Spline — Uncertainty Quantification
 
 Approximates complex return distributions for probabilistic forecasting.
 
@@ -203,7 +203,7 @@ Approximates complex return distributions for probabilistic forecasting.
 
 ---
 
-### 6️⃣ Quantile Distribution — VaR & CVaR Risk
+### 6️. Quantile Distribution — VaR & CVaR Risk
 
 Core risk management model for loss quantification.
 
@@ -217,7 +217,7 @@ Core risk management model for loss quantification.
 
 ---
 
-### 7️⃣ Davies Distribution ⭐ — Market Stress Intelligence
+### 7️. Davies Distribution  — Market Stress Intelligence
 
 **Flagship model.** Identifies the current market stress regime with high sensitivity.
 
@@ -232,7 +232,7 @@ Core risk management model for loss quantification.
 
 ---
 
-## 🎯 Decision Engine
+## Decision Engine
 
 ### Weighted Model Fusion
 
@@ -295,7 +295,7 @@ GET /health
 
 ---
 
-## 🚀 Local Installation
+## Local Installation
 
 ### 1. Clone Repository
 
@@ -332,7 +332,7 @@ Open in browser: `http://localhost:5000`
 
 ---
 
-## ☁️ Deploy on Render
+## Deploy on Render
 
 ```yaml
 # render.yaml
@@ -343,7 +343,7 @@ python_version: "3.11"
 
 ---
 
-## 📦 Dependencies
+## Dependencies
 
 ```txt
 Flask
@@ -358,7 +358,7 @@ advanced-distributions
 
 ---
 
-## 🔮 Future Roadmap
+## Future Roadmap
 
 ### Phase 2 — Real-Time Streaming
 - [ ] Kafka Streaming Integration
@@ -386,14 +386,14 @@ advanced-distributions
 
 ---
 
-## 🛡 Disclaimer
+## Disclaimer
 
 > ⚠️ This software is intended for **research**, **education**, and **quantitative analysis** purposes only.
 > It is **NOT financial advice**. Users are solely responsible for their own investment decisions.
 
 ---
 
-## 👨‍💻 Author
+## Author
 
 **Sandeep Kumar**
 M.Sc Computer Science — NIT Tiruchirappalli
@@ -402,19 +402,19 @@ M.Sc Computer Science — NIT Tiruchirappalli
 
 ---
 
-## ⭐ Support
+## Support
 
 If you find this project useful:
 
-- ⭐ **Star** the repository
-- 🍴 **Fork** and contribute
-- 🐛 **Report issues** via GitHub Issues
-- 📢 **Share** with the quant finance community
+-  **Star** the repository
+-  **Fork** and contribute
+-  **Report issues** via GitHub Issues
+-  **Share** with the quant finance community
 
 ---
 
 <div align="center">
 
-Made with ❤️ by Sandeep Kumar
+Made with Sandeep Kumar
 
 </div>
