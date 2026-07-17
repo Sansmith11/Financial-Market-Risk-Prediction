@@ -1113,21 +1113,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <div id="recentSearches" class="recent-row"></div>
         </div>
 
-        <div class="panel card">
-          <div class="card-head">
-            <div>
-              <div class="card-title">Backend features added</div>
-              <div class="card-sub">What changed beyond the UI.</div>
-            </div>
-          </div>
-          <div class="note">
-            <p>Live quote API with auto-refresh, in-memory recent search tracking, watchlist endpoint, short-term caching for faster repeat requests, and a more prominent model-based stock action are now built into the app.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
+        
   <script>
     const $ = id => document.getElementById(id);
     const COLORS = {
